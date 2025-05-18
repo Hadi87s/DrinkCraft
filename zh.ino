@@ -1,7 +1,9 @@
-#include <Keypad.h>
+#include <Keypad.h>               
+#include <LiquidCrystal_I2C.h>  
+#include <EEPROM.h>
 
-enum State { MENU, PROCESS };
-State state = MENU;
+enum State { loginPage ,MENU, PROCESS };
+State state = loginPage;
 int PistachioSelectedOption = 0;
 int JuiceSelectedOption=0;
 
@@ -9,14 +11,16 @@ int JuiceSelectedOption=0;
 const byte ROWS = 4;
 const byte COLS = 4;
 char keys[ROWS][COLS] = {
-  {'1', '2', '3', 'A'},
-  {'4', '5', '6', 'B'},
-  {'7', '8', '9', 'C'},
-  {'*', '0', '#', 'D'}
+  {'1', '2', '3', '+'},
+  {'4', '5', '6', '-'},
+  {'7', '8', '9', 'x'},
+  {'.', '0', '=', '%'}
 };
 byte rowPins[ROWS] = {24, 25, 26, 27};
 byte colPins[COLS] = {28, 29, 30, 31};
 Keypad keypad = Keypad(makeKeymap(keys), rowPins, colPins, ROWS, COLS);
+
+LiquidCrystal_I2C lcd(0x27, 16, 2); 
 
 // DC Motor1 Pins
 const int dc1EnablePin = 10; // ENB
@@ -54,9 +58,14 @@ const int strawberryDirPin = 6;
 // apple Stepper Motor Pins
 const int appleStepPin = 2;
 const int appleDirPin = 7;
+//Mango  stepper motor
+const int mangoStepPin = 22;
+const int mangoDirPin = 23;
 // Pistachio Stepper Motor Pins
 const int bistishioStepPin = 12;
 const int bistishioDirPin = 11;
+
+
 
 // Stepper motor settings
 const int initialStepperSteps = 200;
@@ -76,6 +85,10 @@ const int relayPin = 35;
 
 char Pistachiokey;
 char JuiceKey;
+char key;
+
+#define USERNAME_LEN 10
+#define PASSWORD_LEN 4
 
 void displayMessage(const char *message) {
   Serial.println(message);
@@ -83,6 +96,14 @@ void displayMessage(const char *message) {
 
 void setup() {
   Serial.begin(9600);
+
+  lcd.init();            
+  lcd.backlight();
+  lcd.clear();       
+  lcd.setCursor(0, 0);             
+  lcd.print("1:Login");
+  lcd.setCursor(0, 1);
+  lcd.print("2:SignUp");
 
   // Set DC motor 1 pins
   pinMode(dc1EnablePin, OUTPUT);
@@ -106,6 +127,9 @@ void setup() {
 
   pinMode(appleStepPin, OUTPUT);
   pinMode(appleDirPin, OUTPUT);
+
+  pinMode(mangoStepPin, OUTPUT);
+  pinMode(mangoDirPin, OUTPUT);
 
   // Set IR sensor pin
   pinMode(irSensor1Pin, INPUT);
@@ -134,15 +158,27 @@ void setup() {
 }
 
 void loop() {
-  if (state == MENU) {
+  if(state == loginPage){
+    key = keypad.getKey();   // Read a key
+  if (key == '1') {
+    login();
+    state = MENU;
+  } else if (key == '2') {
+    signup();
+  }
+  }
+  else if (state == MENU) {
     handleKeypadPistachioMode();
   } else if (state == PROCESS) {
     handleProcess();
-    state = MENU; // return to menu after process
+    state = loginPage; // return to menu after process
   }
 }
 
 void handleKeypadPistachioMode() {
+  lcd.clear();
+  lcd.print("Enter your order");
+
   displayMessage("Select Pistachio 1-4");
 
   while (true) {
@@ -183,6 +219,9 @@ void handleKeypadJuiceMode() {
 }
 
 void handleProcess() {
+  lcd.clear();
+  lcd.print("Preparing Order.");
+  
   stopDCMotor1();
   displayMessage("Running Cup motor...");
   delay(1000);
@@ -220,7 +259,10 @@ void handleProcess() {
 
     case 3:
       MixerSensorDetect();
-      //stepper three
+
+      displayMessage("Running Mango Stepper...");
+      runStepper(mangoStepPin, mangoDirPin, initialStepperSteps, HIGH);
+      delay(2000);
 
       RunMixing();
       break;
@@ -231,6 +273,7 @@ void handleProcess() {
       displayMessage("Running Strawberry Stepper...");
       runStepper(strawberryStepPin, strawberryDirPin, initialStepperSteps, HIGH);
       delay(2000);
+    
       displayMessage("Running Apple Stepper...");
       runStepper(appleStepPin, appleDirPin, initialStepperSteps, HIGH);
       delay(2000);
@@ -244,6 +287,10 @@ void handleProcess() {
       displayMessage("Running Apple Stepper...");
       runStepper(appleStepPin, appleDirPin, initialStepperSteps, HIGH);
       delay(2000);
+
+      displayMessage("Running Mango Stepper...");
+      runStepper(mangoStepPin, mangoDirPin, initialStepperSteps, HIGH);
+      delay(2000);
       
       RunMixing();
       break;
@@ -254,20 +301,28 @@ void handleProcess() {
       displayMessage("Running Apple Stepper...");
       runStepper(appleStepPin, appleDirPin, initialStepperSteps, HIGH);
       delay(2000);
-      //stepper three
+
+      displayMessage("Running Mango Stepper...");
+      runStepper(mangoStepPin, mangoDirPin, initialStepperSteps, HIGH);
+      delay(2000);
 
       RunMixing();
       break;
 
     case 7:
     MixerSensorDetect();
+
     displayMessage("Running Strawberry Stepper...");
     runStepper(strawberryStepPin, strawberryDirPin, initialStepperSteps, HIGH);
     delay(2000);
+
     displayMessage("Running Apple Stepper...");
     runStepper(appleStepPin, appleDirPin, initialStepperSteps, HIGH);
     delay(2000);
-    //stepper three
+
+    displayMessage("Running Mango Stepper...");
+    runStepper(mangoStepPin, mangoDirPin, initialStepperSteps, HIGH);
+    delay(2000);
 
     RunMixing();
       break;
@@ -289,8 +344,93 @@ void handleProcess() {
   runDCMotor1Forward();
   delay(5000);
   stopDCMotor1();
-  displayMessage("Done!");
 
+  lcd.clear();
+  lcd.print("Order is ready");
+  displayMessage("Done!");
+  delay(3000);
+  
+  lcd.clear();
+  lcd.setCursor(0, 0);             
+  lcd.print("1:Login");
+  lcd.setCursor(0, 1);
+  lcd.print("2:SignUp");
+
+}
+
+
+void getInput(char *buffer, const char *label, int maxLen) {
+  lcd.clear();
+  lcd.print(label);
+  int index = 0;
+  while (index < maxLen) {
+    char key = keypad.getKey();
+    if (key) {
+      if (key == '.') break;
+      buffer[index++] = key;
+      lcd.setCursor(index, 1);
+      lcd.print("*");
+    }
+  }
+  buffer[index] = '\0';
+}
+
+// Signup function 
+void signup() {
+  char username[USERNAME_LEN + 1];
+  char password[PASSWORD_LEN + 1];
+
+  getInput(username, "Set Username:", USERNAME_LEN);
+  delay(500);
+  getInput(password, "Set Password:", PASSWORD_LEN);
+
+  for (int i = 0; i < USERNAME_LEN; i++) {
+    EEPROM.write(i, username[i]);
+  }
+  for (int i = 0; i < PASSWORD_LEN; i++) {
+    EEPROM.write(USERNAME_LEN + i, password[i]);
+  }
+
+  lcd.clear();
+  lcd.print("Signup Complete!");
+  delay(2000);
+  lcd.clear();
+  lcd.setCursor(0, 0);             
+  lcd.print("1:Login");
+  lcd.setCursor(0, 1);
+  lcd.print("2:SignUp");
+}
+
+// Login function 
+void login() {
+  char username[USERNAME_LEN + 1];
+  char password[PASSWORD_LEN + 1];
+  char storedUser[USERNAME_LEN + 1];
+  char storedPass[PASSWORD_LEN + 1];
+
+  getInput(username, "Enter Username:", USERNAME_LEN);
+  delay(500);
+  getInput(password, "Enter Password:", PASSWORD_LEN);
+
+  for (int i = 0; i < USERNAME_LEN; i++) {
+    storedUser[i] = EEPROM.read(i);
+  }
+  for (int i = 0; i < PASSWORD_LEN; i++) {
+    storedPass[i] = EEPROM.read(USERNAME_LEN + i);
+  }
+
+  storedUser[USERNAME_LEN] = '\0';
+  storedPass[PASSWORD_LEN] = '\0';
+
+  if (strcmp(username, storedUser) == 0 && strcmp(password, storedPass) == 0) {
+    lcd.clear();
+    lcd.print("Access Granted");
+  } else {
+    lcd.clear();
+    lcd.print("Access Denied");
+  }
+
+ 
 }
 
 
@@ -390,6 +530,7 @@ digitalWrite(relayPin, HIGH);
 void PistachioSensorDetect() {
   while (true) {
     if (digitalRead(irSensor3Pin) == LOW) {
+      delay(1000);
       stopDCMotor1();
       displayMessage("Running Pistachio Stepper...");
       runStepper(bistishioStepPin, bistishioDirPin, initialStepperSteps, HIGH);
@@ -402,6 +543,7 @@ void PistachioSensorDetect() {
 void MixerSensorDetect() {
   while (true) {
     if (digitalRead(irSensor1Pin) == LOW) {
+      delay(1250);
       stopDCMotor1();
       break;
      }
@@ -410,6 +552,7 @@ void MixerSensorDetect() {
 void PressMachineSensorDetect() {
   while (true) {
     if (digitalRead(irSensor2Pin) == LOW) {
+      delay(1000);
       stopDCMotor1();
       displayMessage("Running press machine DC motor...");
       runDCMotor2Forward();
