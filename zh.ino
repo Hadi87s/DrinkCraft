@@ -1,4 +1,5 @@
 #include <Keypad.h>               
+
 #include <LiquidCrystal_I2C.h>  
 #include <EEPROM.h>
 
@@ -68,7 +69,8 @@ const int bistishioDirPin = 11;
 
 
 // Stepper motor settings
-const int initialStepperSteps = 200;
+const int initialStepperSteps = 100;
+const int initialStepperCupSteps = 200;
 const int stepDelaycup = 3000;
 const int stepDelay = 2500;
 
@@ -79,8 +81,9 @@ const int irSensor2Pin = 13; // Second IR sensor press machine
 const int irSensor3Pin = 46; // third IR sensor bistashio
 
 
-// mixer relay 
+// mixer & pump relay 
 const int relayPin = 35;
+const int relayPumpPin = 47;
 
 
 char Pistachiokey;
@@ -153,7 +156,9 @@ void setup() {
   // mixer relay 
   pinMode(relayPin, OUTPUT);
   digitalWrite(relayPin, HIGH); // Start with relay off
-
+  // Pump relay 
+  pinMode(relayPumpPin, OUTPUT);
+  digitalWrite(relayPumpPin, HIGH); // Start with relay off
 
 }
 
@@ -225,7 +230,7 @@ void handleProcess() {
   stopDCMotor1();
   displayMessage("Running Cup motor...");
   delay(1000);
-  runcupStepper(cupsStepPin, cupsDirPin, initialStepperSteps, HIGH);
+  runcupStepper(cupsStepPin, cupsDirPin, initialStepperCupSteps, HIGH);
   delay(1000);
   runDCMotor1Forward();
 
@@ -447,6 +452,7 @@ void runcupStepper(int stepPin, int dirPin, int steps, bool direction) {
 
 // Fruit stepper motors function
 void runStepper(int stepPin, int dirPin, int steps, bool direction) {
+  
   digitalWrite(dirPin, direction);
   for (int i = 0; i < steps; i++) {
     digitalWrite(stepPin, HIGH);
@@ -454,7 +460,15 @@ void runStepper(int stepPin, int dirPin, int steps, bool direction) {
     digitalWrite(stepPin, LOW);
     delayMicroseconds(stepDelay);
   }
+  digitalWrite(dirPin, !direction); 
+  for (int i = 0; i < steps; i++) {
+    digitalWrite(stepPin, HIGH);
+    delayMicroseconds(stepDelay);
+    digitalWrite(stepPin, LOW);
+    delayMicroseconds(stepDelay);
+  }
 }
+
 
 // DC Motor 1 controls
 void runDCMotor1Forward() {
@@ -527,13 +541,21 @@ void turnRelayOff() {
 digitalWrite(relayPin, HIGH);
 }
 
+void turnPumpRelayOn() {
+digitalWrite(relayPumpPin, LOW);
+}
+
+void turnPumpRelayOff() {
+digitalWrite(relayPumpPin, HIGH);
+}
+
 void PistachioSensorDetect() {
   while (true) {
     if (digitalRead(irSensor3Pin) == LOW) {
       delay(1000);
       stopDCMotor1();
       displayMessage("Running Pistachio Stepper...");
-      runStepper(bistishioStepPin, bistishioDirPin, initialStepperSteps, HIGH);
+      runStepperPistachio(bistishioStepPin, bistishioDirPin, 80, HIGH);
       delay(2000);
       break;
      }
@@ -566,7 +588,13 @@ void PressMachineSensorDetect() {
 void RunMixing() {
 
   stopDCMotor1();
+  delay(2000);
+
+  displayMessage("Running relay Pump...");
+  turnPumpRelayOn();
   delay(4000);
+  turnPumpRelayOff();
+
   displayMessage("Running Milk Pump...");
   runPump();
   delay(5000);
@@ -579,12 +607,31 @@ void RunMixing() {
 
   displayMessage("Turning on Relay...");
   turnRelayOn();
-  delay(2000);
+  delay(8000);
   turnRelayOff();
 
   displayMessage("Running cleaning Pump...");
   runCleaningPump();
   delay(5000);
   stopCleaningPump();
+
   
+}
+void runStepperPistachio(int stepPin, int dirPin, int steps, bool direction) {
+  // Move forward
+  digitalWrite(dirPin, direction);
+  for (int i = 0; i < steps; i++) {
+    digitalWrite(stepPin, HIGH);
+    delayMicroseconds(stepDelay);
+    digitalWrite(stepPin, LOW);
+    delayMicroseconds(stepDelay);
+  }
+  // Move back (reverse direction)
+  digitalWrite(dirPin, !direction); // reverse the direction
+  for (int i = 0; i < steps; i++) {
+    digitalWrite(stepPin, HIGH);
+    delayMicroseconds(stepDelay);
+    digitalWrite(stepPin, LOW);
+    delayMicroseconds(stepDelay);
+  }
 }
