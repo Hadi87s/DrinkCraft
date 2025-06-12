@@ -69,7 +69,7 @@ const int bistishioDirPin = 11;
 
 
 // Stepper motor settings
-const int initialStepperSteps = 100;
+const int initialStepperSteps = 105;
 const int initialStepperCupSteps = 200;
 const int stepDelaycup = 3000;
 const int stepDelay = 2500;
@@ -83,7 +83,6 @@ const int irSensor3Pin = 46; // third IR sensor bistashio
 
 // mixer & pump relay 
 const int relayPin = 35;
-const int relayPumpPin = 47;
 
 
 char Pistachiokey;
@@ -156,9 +155,7 @@ void setup() {
   // mixer relay 
   pinMode(relayPin, OUTPUT);
   digitalWrite(relayPin, HIGH); // Start with relay off
-  // Pump relay 
-  pinMode(relayPumpPin, OUTPUT);
-  digitalWrite(relayPumpPin, HIGH); // Start with relay off
+  
 
 }
 
@@ -167,7 +164,6 @@ void loop() {
     key = keypad.getKey();   // Read a key
   if (key == '1') {
     login();
-    state = MENU;
   } else if (key == '2') {
     signup();
   }
@@ -249,17 +245,17 @@ void handleProcess() {
       runStepper(strawberryStepPin, strawberryDirPin, initialStepperSteps, HIGH);
       delay(2000);
       
-      RunMixing();
+      ////RunMixing();
       break;
 
     case 2:
       MixerSensorDetect();
 
       displayMessage("Running Apple Stepper...");
-      runStepper(appleStepPin, appleDirPin, initialStepperSteps, HIGH);
+      runStepper(appleStepPin, appleDirPin, 75, HIGH);
       delay(2000);
 
-      RunMixing();
+      ////RunMixing();
       break;
 
     case 3:
@@ -269,7 +265,7 @@ void handleProcess() {
       runStepper(mangoStepPin, mangoDirPin, initialStepperSteps, HIGH);
       delay(2000);
 
-      RunMixing();
+      ////RunMixing();
       break;
 
     case 4:
@@ -280,38 +276,38 @@ void handleProcess() {
       delay(2000);
     
       displayMessage("Running Apple Stepper...");
-      runStepper(appleStepPin, appleDirPin, initialStepperSteps, HIGH);
+      runStepper(appleStepPin, appleDirPin, 65, HIGH);
       delay(2000);
 
-      RunMixing();
+      ////RunMixing();
       break;
 
     case 5:
       MixerSensorDetect();
 
       displayMessage("Running Apple Stepper...");
-      runStepper(appleStepPin, appleDirPin, initialStepperSteps, HIGH);
+      runStepper(appleStepPin, appleDirPin, 65, HIGH);
       delay(2000);
 
       displayMessage("Running Mango Stepper...");
       runStepper(mangoStepPin, mangoDirPin, initialStepperSteps, HIGH);
       delay(2000);
       
-      RunMixing();
+      ////RunMixing();
       break;
 
     case 6:
       MixerSensorDetect();
 
       displayMessage("Running Apple Stepper...");
-      runStepper(appleStepPin, appleDirPin, initialStepperSteps, HIGH);
+      runStepper(appleStepPin, appleDirPin, 65, HIGH);
       delay(2000);
 
       displayMessage("Running Mango Stepper...");
       runStepper(mangoStepPin, mangoDirPin, initialStepperSteps, HIGH);
       delay(2000);
 
-      RunMixing();
+      ////RunMixing();
       break;
 
     case 7:
@@ -322,14 +318,14 @@ void handleProcess() {
     delay(2000);
 
     displayMessage("Running Apple Stepper...");
-    runStepper(appleStepPin, appleDirPin, initialStepperSteps, HIGH);
+    runStepper(appleStepPin, appleDirPin, 75, HIGH);
     delay(2000);
 
     displayMessage("Running Mango Stepper...");
     runStepper(mangoStepPin, mangoDirPin, initialStepperSteps, HIGH);
     delay(2000);
 
-    RunMixing();
+    ////RunMixing();
       break;
 
     default:
@@ -345,10 +341,28 @@ void handleProcess() {
   runDCMotor1Forward();
 
   PressMachineSensorDetect();
-  delay(2000);
+  delay(2500);
   runDCMotor1Forward();
   delay(5000);
   stopDCMotor1();
+
+  displayMessage("Running water Pump...");
+  runPump();
+  delay(6000);
+  stopPump();
+
+  displayMessage("Turning on Relay...");
+  turnRelayOn();
+  delay(5000);
+  turnRelayOff();
+
+  delay(2000);
+
+  displayMessage("Running cleaning Pump...");
+  runMixerPump();
+  delay(10000);
+  stopMixerPump();
+
 
   lcd.clear();
   lcd.print("Order is ready");
@@ -417,6 +431,60 @@ void login() {
   delay(500);
   getInput(password, "Enter Password:", PASSWORD_LEN);
 
+  // Admin Login
+  if (strcmp(username, "123") == 0 && strcmp(password, "123") == 0) {
+    lcd.clear();
+    lcd.print("Admin Access");
+    delay(1000);
+
+    while (true) {
+      lcd.clear();
+      lcd.print("1: Clear EEPROM");
+      lcd.setCursor(0, 1);
+      lcd.print("2: Go Back");
+
+      char choice = 0;
+      while (!choice) {
+        choice = keypad.getKey();
+      }
+
+      if (choice == '1') {
+        for (int i = 0; i < EEPROM.length(); i++) {
+          EEPROM.write(i, 0);
+        }
+        lcd.clear();
+        lcd.print("EEPROM Cleared");
+        delay(2000);
+
+        lcd.clear(); 
+        lcd.print("Returning...");
+        delay(1500);
+        
+        lcd.clear();      
+        lcd.setCursor(0, 0);             
+        lcd.print("1:Login");
+        lcd.setCursor(0, 1);
+        lcd.print("2:SignUp");
+        state = loginPage; 
+        return;
+
+      } else if (choice == '2') {
+        lcd.clear();
+        lcd.print("Returning...");
+        delay(1000);
+
+        lcd.clear();       
+        lcd.setCursor(0, 0);             
+        lcd.print("1:Login");
+        lcd.setCursor(0, 1);
+        lcd.print("2:SignUp");
+        state = loginPage; 
+        return;
+      }
+    }
+  }
+
+  // Read stored credentials
   for (int i = 0; i < USERNAME_LEN; i++) {
     storedUser[i] = EEPROM.read(i);
   }
@@ -430,12 +498,20 @@ void login() {
   if (strcmp(username, storedUser) == 0 && strcmp(password, storedPass) == 0) {
     lcd.clear();
     lcd.print("Access Granted");
+    delay(2000);
+    state = MENU; // Move to main menu
   } else {
     lcd.clear();
     lcd.print("Access Denied");
-  }
+    delay(2000);
 
- 
+    lcd.clear();       
+    lcd.setCursor(0, 0);             
+    lcd.print("1:Login");
+    lcd.setCursor(0, 1);
+    lcd.print("2:SignUp");
+    state = loginPage; // Stay on login screen
+  }
 }
 
 
@@ -541,13 +617,6 @@ void turnRelayOff() {
 digitalWrite(relayPin, HIGH);
 }
 
-void turnPumpRelayOn() {
-digitalWrite(relayPumpPin, LOW);
-}
-
-void turnPumpRelayOff() {
-digitalWrite(relayPumpPin, HIGH);
-}
 
 void PistachioSensorDetect() {
   while (true) {
@@ -555,7 +624,7 @@ void PistachioSensorDetect() {
       delay(1000);
       stopDCMotor1();
       displayMessage("Running Pistachio Stepper...");
-      runStepperPistachio(bistishioStepPin, bistishioDirPin, 80, HIGH);
+      runStepperPistachio(bistishioStepPin, bistishioDirPin, 200, HIGH);
       delay(2000);
       break;
      }
@@ -565,7 +634,7 @@ void PistachioSensorDetect() {
 void MixerSensorDetect() {
   while (true) {
     if (digitalRead(irSensor1Pin) == LOW) {
-      delay(1250);
+      delay(1050);
       stopDCMotor1();
       break;
      }
@@ -588,34 +657,23 @@ void PressMachineSensorDetect() {
 void RunMixing() {
 
   stopDCMotor1();
-  delay(2000);
+  delay(1000);
 
-  displayMessage("Running relay Pump...");
-  turnPumpRelayOn();
-  delay(4000);
-  turnPumpRelayOff();
-
-  displayMessage("Running Milk Pump...");
+  displayMessage("Running water Pump...");
   runPump();
-  delay(5000);
+  delay(12000);
   stopPump();
-
-  displayMessage("Running Mixer Pump...");
-  runMixerPump();
-  delay(5000);
-  stopMixerPump();
 
   displayMessage("Turning on Relay...");
   turnRelayOn();
-  delay(8000);
+  delay(90000);
   turnRelayOff();
 
   displayMessage("Running cleaning Pump...");
   runCleaningPump();
-  delay(5000);
+  delay(16000);
   stopCleaningPump();
 
-  
 }
 void runStepperPistachio(int stepPin, int dirPin, int steps, bool direction) {
   // Move forward
@@ -625,13 +683,15 @@ void runStepperPistachio(int stepPin, int dirPin, int steps, bool direction) {
     delayMicroseconds(stepDelay);
     digitalWrite(stepPin, LOW);
     delayMicroseconds(stepDelay);
+
   }
-  // Move back (reverse direction)
-  digitalWrite(dirPin, !direction); // reverse the direction
-  for (int i = 0; i < steps; i++) {
+
+  for (int i = 0; i < steps/2; i++) {
     digitalWrite(stepPin, HIGH);
     delayMicroseconds(stepDelay);
     digitalWrite(stepPin, LOW);
     delayMicroseconds(stepDelay);
+
   }
+
 }
