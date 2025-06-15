@@ -1,7 +1,9 @@
 #include <Keypad.h>               
-
 #include <LiquidCrystal_I2C.h>  
 #include <EEPROM.h>
+#include <Servo.h>
+
+Servo myServo;
 
 enum State { loginPage ,MENU, PROCESS };
 State state = loginPage;
@@ -106,6 +108,9 @@ void setup() {
   lcd.print("1:Login");
   lcd.setCursor(0, 1);
   lcd.print("2:SignUp");
+
+  myServo.attach(A0);  // Use analog pin A0 as digital output
+
 
   // Set DC motor 1 pins
   pinMode(dc1EnablePin, OUTPUT);
@@ -245,8 +250,7 @@ void handleProcess() {
       runStepper(strawberryStepPin, strawberryDirPin, initialStepperSteps, HIGH);
       delay(2000);
       
-      ////RunMixing();
-      break;
+      RunMixing();      break;
 
     case 2:
       MixerSensorDetect();
@@ -255,8 +259,7 @@ void handleProcess() {
       runStepper(appleStepPin, appleDirPin, 75, HIGH);
       delay(2000);
 
-      ////RunMixing();
-      break;
+      RunMixing();      break;
 
     case 3:
       MixerSensorDetect();
@@ -265,8 +268,7 @@ void handleProcess() {
       runStepper(mangoStepPin, mangoDirPin, initialStepperSteps, HIGH);
       delay(2000);
 
-      ////RunMixing();
-      break;
+      RunMixing();      break;
 
     case 4:
       MixerSensorDetect();
@@ -279,8 +281,7 @@ void handleProcess() {
       runStepper(appleStepPin, appleDirPin, 65, HIGH);
       delay(2000);
 
-      ////RunMixing();
-      break;
+      RunMixing();      break;
 
     case 5:
       MixerSensorDetect();
@@ -293,8 +294,7 @@ void handleProcess() {
       runStepper(mangoStepPin, mangoDirPin, initialStepperSteps, HIGH);
       delay(2000);
       
-      ////RunMixing();
-      break;
+      RunMixing();      break;
 
     case 6:
       MixerSensorDetect();
@@ -307,26 +307,24 @@ void handleProcess() {
       runStepper(mangoStepPin, mangoDirPin, initialStepperSteps, HIGH);
       delay(2000);
 
-      ////RunMixing();
-      break;
+      RunMixing();      break;
 
     case 7:
     MixerSensorDetect();
 
     displayMessage("Running Strawberry Stepper...");
-    runStepper(strawberryStepPin, strawberryDirPin, initialStepperSteps, HIGH);
+    runStepper(strawberryStepPin, strawberryDirPin, 85, HIGH);
     delay(2000);
 
     displayMessage("Running Apple Stepper...");
-    runStepper(appleStepPin, appleDirPin, 75, HIGH);
+    runStepper(appleStepPin, appleDirPin, 85, HIGH);
     delay(2000);
 
     displayMessage("Running Mango Stepper...");
-    runStepper(mangoStepPin, mangoDirPin, initialStepperSteps, HIGH);
+    runStepper(mangoStepPin, mangoDirPin, 85, HIGH);
     delay(2000);
 
-    ////RunMixing();
-      break;
+    RunMixing();      break;
 
     default:
       Serial.println("Somthing went wrong");
@@ -341,7 +339,7 @@ void handleProcess() {
   runDCMotor1Forward();
 
   PressMachineSensorDetect();
-  delay(2500);
+  delay(3000);
   runDCMotor1Forward();
   delay(5000);
   stopDCMotor1();
@@ -353,7 +351,7 @@ void handleProcess() {
 
   displayMessage("Turning on Relay...");
   turnRelayOn();
-  delay(5000);
+  delay(9000);
   turnRelayOff();
 
   delay(2000);
@@ -368,6 +366,20 @@ void handleProcess() {
   lcd.print("Order is ready");
   displayMessage("Done!");
   delay(3000);
+
+  for (int pos = 30; pos >= 0; pos--) {
+    myServo.write(pos);
+    delay(15);
+  }
+  
+  runDCMotor1Forward();
+  delay(12000);
+  stopDCMotor1();
+
+  for (int pos = 0; pos <= 30; pos++) {
+    myServo.write(pos);
+    delay(15);
+  }
   
   lcd.clear();
   lcd.setCursor(0, 0);             
@@ -543,6 +555,21 @@ void runStepper(int stepPin, int dirPin, int steps, bool direction) {
     digitalWrite(stepPin, LOW);
     delayMicroseconds(stepDelay);
   }
+
+  digitalWrite(dirPin, direction);
+  for (int i = 0; i < steps; i++) {
+    digitalWrite(stepPin, HIGH);
+    delayMicroseconds(stepDelay);
+    digitalWrite(stepPin, LOW);
+    delayMicroseconds(stepDelay);
+  }
+  digitalWrite(dirPin, !direction); 
+  for (int i = 0; i < steps; i++) {
+    digitalWrite(stepPin, HIGH);
+    delayMicroseconds(stepDelay);
+    digitalWrite(stepPin, LOW);
+    delayMicroseconds(stepDelay);
+  }
 }
 
 
@@ -624,7 +651,7 @@ void PistachioSensorDetect() {
       delay(1000);
       stopDCMotor1();
       displayMessage("Running Pistachio Stepper...");
-      runStepperPistachio(bistishioStepPin, bistishioDirPin, 200, HIGH);
+      runStepperPistachio(bistishioStepPin, bistishioDirPin, 160, HIGH);
       delay(2000);
       break;
      }
@@ -661,15 +688,15 @@ void RunMixing() {
 
   displayMessage("Running water Pump...");
   runPump();
-  delay(12000);
+  delay(10000);
   stopPump();
 
-  displayMessage("Turning on Relay...");
+  displayMessage("Turning on Mixer Relay...");
   turnRelayOn();
-  delay(90000);
+  delay(80000);
   turnRelayOff();
 
-  displayMessage("Running cleaning Pump...");
+  displayMessage("Running Cup fill Pump...");
   runCleaningPump();
   delay(16000);
   stopCleaningPump();
