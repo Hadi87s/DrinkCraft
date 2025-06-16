@@ -344,43 +344,12 @@ void handleProcess() {
   delay(5000);
   stopDCMotor1();
 
-  displayMessage("Running water Pump...");
-  runPump();
-  delay(6000);
-  stopPump();
-
-  displayMessage("Turning on Relay...");
-  turnRelayOn();
-  delay(9000);
-  turnRelayOff();
-
-  delay(2000);
-
-  displayMessage("Running cleaning Pump...");
-  runMixerPump();
-  delay(10000);
-  stopMixerPump();
-
-
   lcd.clear();
   lcd.print("Order is ready");
-  displayMessage("Done!");
   delay(3000);
 
-  for (int pos = 30; pos >= 0; pos--) {
-    myServo.write(pos);
-    delay(15);
-  }
-  
-  runDCMotor1Forward();
-  delay(12000);
-  stopDCMotor1();
+  RunCleaning();
 
-  for (int pos = 0; pos <= 30; pos++) {
-    myServo.write(pos);
-    delay(15);
-  }
-  
   lcd.clear();
   lcd.setCursor(0, 0);             
   lcd.print("1:Login");
@@ -720,5 +689,54 @@ void runStepperPistachio(int stepPin, int dirPin, int steps, bool direction) {
     delayMicroseconds(stepDelay);
 
   }
+
+}
+
+
+void RunCleaning() {
+
+  displayMessage("Start cleaning");
+  lcd.clear();
+  lcd.print("Start cleaning");
+  
+  displayMessage("Running water Pump...");
+  runPump();
+  delay(6000);
+  stopPump();
+
+  displayMessage("Turning on Relay...");
+  turnRelayOn();
+  delay(9000);
+  turnRelayOff();
+
+  delay(1000);
+
+  displayMessage("Running cleaning Pump...");
+  runMixerPump();
+  delay(10000);
+  stopMixerPump();
+
+  delay(1000);
+
+  displayMessage("Done cleaning");
+  for (int pos = 30; pos >= 0; pos--) {
+    myServo.write(pos);
+    delay(15);
+  }
+  
+  runDCMotor1Forward();
+  delay(12000);
+  stopDCMotor1();
+
+  for (int pos = 0; pos <= 30; pos++) {
+    myServo.write(pos);
+    delay(15);
+  }
+
+  displayMessage("Done cleaning");
+  lcd.clear();
+  lcd.print("Done cleaning");
+  delay(1500);
+
 
 }
